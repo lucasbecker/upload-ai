@@ -1,4 +1,6 @@
-import { FileVideo, Github, Upload, Wand2 } from "lucide-react";
+import { useState } from "react";
+import { useCompletion } from "ai/react";
+import { Github, Wand2 } from "lucide-react";
 
 import {
   Select,
@@ -13,10 +15,33 @@ import { Slider } from "./components/ui/slider";
 import { Button } from "./components/ui/button";
 import { Label } from "./components/ui/label";
 
+import { VideoInputForm } from "./components/video-input-form";
 import { ThemeProvider } from "./components/theme-provider";
+import { PromptSelect } from "./components/prompt-select";
 import { ModeToggle } from "./components/mode-toggle";
 
 export function App() {
+  const [temperature, setTemperature] = useState<number>(0.5);
+  const [videoId, setVideoId] = useState<string | null>(null);
+
+  const {
+    input,
+    setInput,
+    handleInputChange,
+    handleSubmit,
+    completion,
+    isLoading,
+  } = useCompletion({
+    api: import.meta.env.VITE_API_URL + "/ai/completion",
+    body: {
+      videoId,
+      temperature,
+    },
+    headers: {
+      "Content-type": "application/json",
+    },
+  });
+
   return (
     <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
       <div className="min-h-screen flex flex-col">
@@ -40,12 +65,15 @@ export function App() {
               <Textarea
                 className="resize-none p-4 leading-relaxed"
                 placeholder="Inclua o prompt para a IA..."
+                value={input}
+                onChange={handleInputChange}
               />
 
               <Textarea
                 className="resize-none p-4 leading-relaxed"
                 placeholder="Resultado gerado pela IA..."
                 readOnly
+                value={completion}
               />
             </div>
 
@@ -60,60 +88,12 @@ export function App() {
           </section>
 
           <aside className="w-80 space-y-6">
-            <form className="space-y-6">
-              <label
-                htmlFor="video"
-                className="flex flex-col items-center justify-center gap-3 border rounded-md border-dashed aspect-video cursor-pointer text-sm text-muted-foreground hover:bg-primary/5"
-              >
-                <FileVideo className="h-6 w-6" />
-                Selecione um vídeo
-              </label>
-
-              <input
-                type="file"
-                id="video"
-                accept="video/mp4"
-                className="sr-only"
-              />
-
-              <div className="space-y-2">
-                <Label htmlFor="transcription-prompt">
-                  Prompt de transcrição
-                </Label>
-
-                <Textarea
-                  id="transcription-prompt"
-                  className="h-20 leading-relaxed resize-none"
-                  placeholder="Inclua palavras-chave mencionadas no vídeo separadas por vírgula (,)"
-                />
-              </div>
-
-              <Button className="w-full" type="submit">
-                Carregar vídeo <Upload className="h-4 w-4 ml-2" />
-              </Button>
-            </form>
+            <VideoInputForm onVideoUploaded={setVideoId} />
 
             <Separator />
 
-            <form className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="prompt">Prompt</Label>
-
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue
-                      id="prompt"
-                      placeholder="Selecione um prompt..."
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="title">Título do YouTube</SelectItem>
-                    <SelectItem value="description">
-                      Descrição do YouTube
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <PromptSelect onSelected={setInput} />
 
               <div className="space-y-2">
                 <Label htmlFor="model">Model</Label>
@@ -140,7 +120,8 @@ export function App() {
                   min={0}
                   max={1}
                   step={0.1}
-                  defaultValue={[0.5]}
+                  value={[temperature]}
+                  onValueChange={(value) => setTemperature(value[0])}
                 />
 
                 <span className="block text-sm text-muted-foreground italic">
@@ -149,7 +130,7 @@ export function App() {
                 </span>
               </div>
 
-              <Button type="submit" className="w-full">
+              <Button disabled={isLoading} type="submit" className="w-full">
                 Executar <Wand2 className="h-4 w-4 ml-2" />
               </Button>
             </form>
